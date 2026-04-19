@@ -1,55 +1,62 @@
-let moviesData = [];
-let filteredData = [];
-let visible = 2;
+const API_URL = "http://127.0.0.1:8000/api/movies";
 
-fetch('http://127.0.0.1:8000/api/movies')
-  .then(res => res.json())
-  .then(data => {
-    moviesData = data;
-    filteredData = data;
+let movies = [];
+let visibleCount = 6;
+
+async function fetchMovies() {
+    const res = await fetch(API_URL);
+    movies = await res.json();
+
     renderMovies();
-  });
-
-function renderMovies() {
-  const container = document.getElementById('movies-container');
-  container.innerHTML = '';
-
-  filteredData.slice(0, visible).forEach(movie => {
-    const div = document.createElement('div');
-
-    div.innerHTML = `
-        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-          <img src="${movie.image_url}" class="movie-img" onerror="this.src='https://via.placeholder.com/300'"/>
-
-          <div class="p-4">
-            <h3 class="text-lg font-bold">${movie.title}</h3>
-            <p class="text-sm text-gray-500">${movie.year} • ${movie.genre}</p>
-            <p class="text-sm mt-2">${movie.synopsis}</p>
-            <p class="text-blue-500 font-semibold mt-2">${movie.category.name}</p>
-          </div>
-        </div>
-    `;
-
-    container.appendChild(div);
-  });
+    loadCategories();
 }
 
-// FILTRO
-document.getElementById('filter').addEventListener('change', (e) => {
-  const value = e.target.value;
+function renderMovies(filter = "") {
+    const container = document.getElementById("movies-container");
+    container.innerHTML = "";
 
-  if (value === 'all') {
-    filteredData = moviesData;
-  } else {
-    filteredData = moviesData.filter(m => m.category.name === value);
-  }
+    let filtered = movies;
 
-  visible = 2; // reset
-  renderMovies();
+    if (filter) {
+        filtered = movies.filter(m => m.category?.name === filter);
+    }
+
+    filtered.slice(0, visibleCount).forEach(movie => {
+        const card = `
+            <div class="card">
+                <img src="${movie.image_url}" alt="${movie.title}">
+                <div class="card-content">
+                    <h2>${movie.title}</h2>
+                    <p>${movie.year} • ${movie.category?.name || 'Sin categoría'}</p>
+                    <p class="desc">${movie.synopsis || 'Sin descripción'}</p>
+                </div>
+            </div>
+        `;
+        container.innerHTML += card;
+    });
+}
+
+function loadCategories() {
+    const select = document.getElementById("categoryFilter");
+
+    const categories = [...new Set(movies.map(m => m.category?.name).filter(Boolean))];
+
+    categories.forEach(cat => {
+        const option = document.createElement("option");
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+    });
+
+    select.addEventListener("change", () => {
+        visibleCount = 6;
+        renderMovies(select.value);
+    });
+}
+
+document.getElementById("loadMoreBtn").addEventListener("click", () => {
+    visibleCount += 6;
+    renderMovies(document.getElementById("categoryFilter").value);
 });
 
-// BOTÓN CARGAR MÁS
-document.getElementById('loadMore').addEventListener('click', () => {
-  visible += 2;
-  renderMovies();
-});
+fetchMovies();
